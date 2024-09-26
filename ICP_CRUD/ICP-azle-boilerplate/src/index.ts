@@ -1,0 +1,100 @@
+import { v4 as uuidv4 } from 'uuid';
+import { Server, StableBTreeMap, ic } from 'azle';
+import express from 'express';
+
+
+/**
+    This type represents a message that can be listed in a board 
+ */
+
+class Message {
+    id: string;
+    title: string;
+    body: string;
+    attachmentURL: string;
+    createdAt: Date;
+    updatedAt: Date | null
+    }
+
+
+/* 
+    This map will store our messages, associating each message with a unique identifier
+    defines the Key -> string and Value -> Message, (0) -> The id of the stable memory region where our map will be stored
+    used for persistent mapping across container redeployments.
+*/
+const messagesStorage = StableBTreeMap<string, Message>(0);
+
+/*
+    Creating the HTTP server and the add message function
+*/
+export default Server(() => {
+    const app = express();
+    app.use(express.json());
+
+    app.post("/messages", (req, res) => {
+        const message: Message = {id: uuidv4(), createdAt: getCurrentDate(), ...req.body};
+        messagesStorage.insert(message.id, message);
+        res.json(message);
+    });
+
+/*
+    Creating the get messages function
+*/
+
+    app.get("/messages", (req, res) => {
+        res.json(messagesStorage.values());
+    });
+    
+    app.get("/messages/:id", (req, res) => {
+        const messageId = req.params.id;
+        const messageOpt = messagesStorage.get(messageId);
+        if ("None" in messageOpt) {
+            res.status(404).send(`the message with id=${messageId} not found`);
+        } else {
+            res.json(messageOpt.Some);
+        }
+    });
+
+/*
+    Creating the update messages function
+*/
+app.put("/messages/:id", (req, res) => {
+    const messageId = req.params.id;
+    const messageOpt = messagesStorage.get(messageId);
+    if("None" in messageOpt) {
+        res.status(400).send(`couldn't update a message with id=${messageId}. messag not found`);
+    } else {
+        const message = messageOpt.Some;
+        const updatedMessage = { ...message, ...req.body, updatedAt: getCurrentDate()};
+        messagesStorage.insert(message.id, updatedMessage);
+        res.json(updatedMessage);
+    }
+});
+
+/*
+    Creating the delete messages function
+*/
+app.delete("/messages/:id", (req, res) => {
+    const messageId = req.params.id;
+    const deletedMessage = messagesStorage.remove(messageId);
+    if ("None" in deletedMessage) {
+       res.status(400).send(`couldn't delete a message with id=${messageId}. message not found`);
+    } else {
+       res.json(deletedMessage.Some);
+    }
+ });
+ 
+ return app.listen();
+
+});
+
+function getCurrentDate() {
+    const timestamp = new Number(ic.time());
+    return new Date(timestamp.valueOf() / 1000_000);
+}
+
+
+
+
+
+

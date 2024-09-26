@@ -1,0 +1,226 @@
+type Account = record { owner : principal; subaccount : opt SubAccount };
+type AccountBalanceArgs = record { account : AccountIdentifier };
+type AccountBalanceArgsDfx = record { account : TextAccountIdentifier };
+type AccountIdentifier = vec nat8;
+type Allowance = record { allowance : Icrc1Tokens; expires_at : opt TimeStamp };
+type AllowanceArgs = record { account : Account; spender : Account };
+type ApproveArgs = record {
+  fee : opt Icrc1Tokens;
+  memo : opt vec nat8;
+  from_subaccount : opt SubAccount;
+  created_at_time : opt TimeStamp;
+  amount : Icrc1Tokens;
+  expected_allowance : opt Icrc1Tokens;
+  expires_at : opt TimeStamp;
+  spender : Account;
+};
+type ApproveError = variant {
+  GenericError : record { message : text; error_code : nat };
+  TemporarilyUnavailable;
+  Duplicate : record { duplicate_of : Icrc1BlockIndex };
+  BadFee : record { expected_fee : Icrc1Tokens };
+  AllowanceChanged : record { current_allowance : Icrc1Tokens };
+  CreatedInFuture : record { ledger_time : nat64 };
+  TooOld;
+  Expired : record { ledger_time : nat64 };
+  InsufficientFunds : record { balance : Icrc1Tokens };
+};
+type ApproveResult = variant { Ok : Icrc1BlockIndex; Err : ApproveError };
+type Archive = record { canister_id : principal };
+type ArchiveOptions = record {
+  num_blocks_to_archive : nat64;
+  trigger_threshold : nat64;
+  max_message_size_bytes : opt nat64;
+  cycles_for_archive_creation : opt nat64;
+  node_max_memory_size_bytes : opt nat64;
+  controller_id : principal;
+};
+type ArchivedBlocksRange = record {
+  callback : QueryArchiveFn;
+  start : BlockIndex;
+  length : nat64;
+};
+type ArchivedEncodedBlocksRange = record {
+  callback : func (GetBlocksArgs) -> (
+      variant { Ok : vec vec nat8; Err : QueryArchiveError },
+    ) query;
+  start : nat64;
+  length : nat64;
+};
+type Archives = record { archives : vec Archive };
+type Block = record {
+  transaction : Transaction;
+  timestamp : TimeStamp;
+  parent_hash : opt vec nat8;
+};
+type BlockIndex = nat64;
+type BlockRange = record { blocks : vec Block };
+type Duration = record { secs : nat64; nanos : nat32 };
+type FeatureFlags = record { icrc2 : bool };
+type GetBlocksArgs = record { start : BlockIndex; length : nat64 };
+type Icrc1BlockIndex = nat;
+type Icrc1Timestamp = nat64;
+type Icrc1Tokens = nat;
+type Icrc1TransferError = variant {
+  GenericError : record { message : text; error_code : nat };
+  TemporarilyUnavailable;
+  BadBurn : record { min_burn_amount : Icrc1Tokens };
+  Duplicate : record { duplicate_of : Icrc1BlockIndex };
+  BadFee : record { expected_fee : Icrc1Tokens };
+  CreatedInFuture : record { ledger_time : nat64 };
+  TooOld;
+  InsufficientFunds : record { balance : Icrc1Tokens };
+};
+type Icrc1TransferResult = variant {
+  Ok : Icrc1BlockIndex;
+  Err : Icrc1TransferError;
+};
+type InitArgs = record {
+  send_whitelist : vec principal;
+  token_symbol : opt text;
+  transfer_fee : opt Tokens;
+  minting_account : TextAccountIdentifier;
+  maximum_number_of_accounts : opt nat64;
+  accounts_overflow_trim_quantity : opt nat64;
+  transaction_window : opt Duration;
+  max_message_size_bytes : opt nat64;
+  icrc1_minting_account : opt Account;
+  archive_options : opt ArchiveOptions;
+  initial_values : vec record { TextAccountIdentifier; Tokens };
+  token_name : opt text;
+  feature_flags : opt FeatureFlags;
+};
+type LedgerCanisterPayload = variant {
+  Upgrade : opt UpgradeArgs;
+  Init : InitArgs;
+};
+type Memo = nat64;
+type Operation = variant {
+  Approve : record {
+    fee : Tokens;
+    from : AccountIdentifier;
+    allowance_e8s : int;
+    allowance : Tokens;
+    expires_at : opt TimeStamp;
+    spender : AccountIdentifier;
+  };
+  Burn : record {
+    from : AccountIdentifier;
+    amount : Tokens;
+    spender : opt AccountIdentifier;
+  };
+  Mint : record { to : AccountIdentifier; amount : Tokens };
+  Transfer : record {
+    to : AccountIdentifier;
+    fee : Tokens;
+    from : AccountIdentifier;
+    amount : Tokens;
+  };
+  TransferFrom : record {
+    to : AccountIdentifier;
+    fee : Tokens;
+    from : AccountIdentifier;
+    amount : Tokens;
+    spender : AccountIdentifier;
+  };
+};
+type QueryArchiveError = variant {
+  BadFirstBlockIndex : record {
+    requested_index : BlockIndex;
+    first_valid_index : BlockIndex;
+  };
+  Other : record { error_message : text; error_code : nat64 };
+};
+type QueryArchiveFn = func (GetBlocksArgs) -> (QueryArchiveResult) query;
+type QueryArchiveResult = variant { Ok : BlockRange; Err : QueryArchiveError };
+type QueryBlocksResponse = record {
+  certificate : opt vec nat8;
+  blocks : vec Block;
+  chain_length : nat64;
+  first_block_index : BlockIndex;
+  archived_blocks : vec ArchivedBlocksRange;
+};
+type QueryEncodedBlocksResponse = record {
+  certificate : opt vec nat8;
+  blocks : vec vec nat8;
+  chain_length : nat64;
+  first_block_index : nat64;
+  archived_blocks : vec ArchivedEncodedBlocksRange;
+};
+type SendArgs = record {
+  to : TextAccountIdentifier;
+  fee : Tokens;
+  memo : Memo;
+  from_subaccount : opt SubAccount;
+  created_at_time : opt TimeStamp;
+  amount : Tokens;
+};
+type SubAccount = vec nat8;
+type TextAccountIdentifier = text;
+type TimeStamp = record { timestamp_nanos : nat64 };
+type Tokens = record { e8s : nat64 };
+type Transaction = record {
+  memo : Memo;
+  icrc1_memo : opt vec nat8;
+  operation : opt Operation;
+  created_at_time : TimeStamp;
+};
+type TransferArg = record {
+  to : Account;
+  fee : opt Icrc1Tokens;
+  memo : opt vec nat8;
+  from_subaccount : opt SubAccount;
+  created_at_time : opt Icrc1Timestamp;
+  amount : Icrc1Tokens;
+};
+type TransferArgs = record {
+  to : AccountIdentifier;
+  fee : Tokens;
+  memo : Memo;
+  from_subaccount : opt SubAccount;
+  created_at_time : opt TimeStamp;
+  amount : Tokens;
+};
+type TransferError = variant {
+  TxTooOld : record { allowed_window_nanos : nat64 };
+  BadFee : record { expected_fee : Tokens };
+  TxDuplicate : record { duplicate_of : BlockIndex };
+  TxCreatedInFuture;
+  InsufficientFunds : record { balance : Tokens };
+};
+type TransferFee = record { transfer_fee : Tokens };
+type TransferFeeArg = record {};
+type TransferResult = variant { Ok : BlockIndex; Err : TransferError };
+type UpgradeArgs = record {
+  maximum_number_of_accounts : opt nat64;
+  icrc1_minting_account : opt Account;
+  feature_flags : opt FeatureFlags;
+};
+type Value = variant { Int : int; Nat : nat; Blob : vec nat8; Text : text };
+service : {
+  account_balance : (AccountBalanceArgs) -> (Tokens) query;
+  account_balance_dfx : (AccountBalanceArgsDfx) -> (Tokens) query;
+  archives : () -> (Archives) query;
+  decimals : () -> (record { decimals : nat32 }) query;
+  icrc1_balance_of : (Account) -> (Icrc1Tokens) query;
+  icrc1_decimals : () -> (nat8) query;
+  icrc1_fee : () -> (Icrc1Tokens) query;
+  icrc1_metadata : () -> (vec record { text; Value }) query;
+  icrc1_minting_account : () -> (opt Account) query;
+  icrc1_name : () -> (text) query;
+  icrc1_supported_standards : () -> (
+      vec record { url : text; name : text },
+    ) query;
+  icrc1_symbol : () -> (text) query;
+  icrc1_total_supply : () -> (Icrc1Tokens) query;
+  icrc1_transfer : (TransferArg) -> (Icrc1TransferResult);
+  icrc2_allowance : (AllowanceArgs) -> (Allowance) query;
+  icrc2_approve : (ApproveArgs) -> (ApproveResult);
+  name : () -> (record { name : text }) query;
+  query_blocks : (GetBlocksArgs) -> (QueryBlocksResponse) query;
+  query_encoded_blocks : (GetBlocksArgs) -> (QueryEncodedBlocksResponse) query;
+  send_dfx : (SendArgs) -> (BlockIndex);
+  symbol : () -> (record { symbol : text }) query;
+  transfer : (TransferArgs) -> (TransferResult);
+  transfer_fee : (TransferFeeArg) -> (TransferFee) query;
+}
